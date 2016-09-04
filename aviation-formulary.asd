@@ -5,6 +5,8 @@
   :author "Jeff Francis <jeff@gritch.org>"
   :license "MIT, see file LICENSE"
   :serial t
+  :depends-on (#:local-time
+               #:bordeaux-threads)
   :components ((:file "package")
                (:file "aviation-formulary")))
 
