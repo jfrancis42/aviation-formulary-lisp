@@ -1,6 +1,6 @@
 ;;;; aviation-formulary-lisp.lisp
 
-(in-package #:aviation-formulary)
+;(in-package #:aviation-formulary)
 
 ;; Unit conversions, etc.
 ;;
@@ -20,28 +20,41 @@
 (defparameter *serial-lock* (bt:make-lock))
 
 ;; radians per degree
-(defconstant *radians-per-degree* (/ pi 180))
+(defconstant radians-per-degree (/ pi 180))
 
 ;; The radius of the Earth in miles (roughly the WGS84/NAD83 value).
-(defconstant *earth-radius* 3956.09)
+(defconstant earth-radius 3956.09)
+
+;; Different Earth radius values.
+(defconstant earth-radius-nm-historic 6366.71)
+(defconstant earth-radius-wgs84-eq-radius 6378.137)
+(defconstant earth-radius-wgs84-polar-radius 6356.752)
+(defconstant earth-radius-fai-sphere 6371.0)
+(defvar *earth-radius* earth-radius-nm-historic)
 
 ;; Sources for points.
-(defconstant *point-gps* 0)
-(defconstant *point-interpolated* 1)
-(defconstant *point-user* 2)
-(defconstant *point-generated* 3)
+(defconstant point-gps 0)
+(defconstant point-interpolated 1)
+(defconstant point-user 2)
+(defconstant point-generated 3)
+
+;; radians to km
+(defmacro rad-to-km (r) `(* ,r *earth-radius*))
+
+;; km to radians
+(defmacro rad-to-km (km) `(/ ,km *earth-radius*))
 
 ;; degrees to radians
-(defmacro d2r (d) `(/ (* ,d pi) 180))
+(defmacro deg-to-rad (d) `(/ (* ,d pi) 180))
 
 ;; radians to degrees
-(defmacro r2d (r) `(/ (* ,r 180) pi))
+(defmacro rad-to-deg (r) `(/ (* ,r 180) pi))
 
 ;; feet to statute miles
-(defmacro ft2sm (ft) `(/ ,ft 5280))
+(defmacro ft-to-sm (ft) `(/ ,ft 5280))
 
 ;; statute miles to feet
-(defmacro sm2ft (mi) `(* ,mi 5280))
+(defmacro sm-to-ft (mi) `(* ,mi 5280))
 
 ;; my own modulus
 (defun my-mod (y x) (- y (* x (floor (/ y x)))))
@@ -71,7 +84,7 @@ cardinal name."
    (t
     (format nil "This can't happen"))))
 
-(defun dms2deg (d m &optional (s 0.0))
+(defun dms-to-dd (d m &optional (s 0.0))
   "Convert Degrees, Minutes, and (optionally) seconds to decimal
 degrees."
   (* 1.0 (+ d (/ (+ m (/ s 60)) 60))))
@@ -102,17 +115,14 @@ degrees."
   ((serial-number :accessor point-serial-number
 		  :initarg :serial-number
 		  :initform (bt:with-lock-held (*serial-lock*) (setf *point-serial-number* (+ 1 *point-serial-number*))))
-   (creation-time-t :accessor point-creation-time-t
-		    :initarg :creation-time-t
-		    :initform nil)
-   (creation-time-string :accessor point-creation-time-string
-			 :initarg :creation-time-string
-			 :initform nil)
+   (creation-time :accessor point-creation-time
+		    :initarg :creation-time
+		    :initform (local-time:now))
    (creation-source :accessor point-creation-source
 		    :initarg :creation-source
 		    :initform nil)
-   (update-time-t :accessor point-update-time-t
-		  :initarg :update-time-t
+   (update-time :accessor point-update-time
+		  :initarg :update-time
 		  :initform nil)
    (update-source :accessor point-update-source
 		  :initarg :update-source
@@ -125,10 +135,9 @@ degrees."
   "Serialize the user-info part of the object."
   (list
    (list 'serial-number (point-serial-number p))
-   (list 'creation-time-t (point-creation-time-t p))
-   (list 'creation-time-string (point-creation-time-string p))
+   (list 'creation-time (point-creation-time p))
    (list 'creation-source (point-creation-source p))
-   (list 'update-time-t (point-update-time-t p))
+   (list 'update-time (point-update-time p))
    (list 'update-source (point-update-source p))
    (list 'description (format nil "\"~A\"" (point-description p)))))
 
@@ -140,12 +149,10 @@ that type."
 	      (cond
 	       ((equal (first n) 'serial-number)
 		(setf (point-serial-number p) (second n)))
-	       ((equal (first n) 'creation-time-t)
-		(setf (point-creation-time-t p) (second n)))
-	       ((equal (first n) 'creation-time-string)
-		(setf (point-creation-time-string p) (second n)))
-	       ((equal (first n) 'update-time-t)
-		(setf (point-update-time-t p) (second n)))
+	       ((equal (first n) 'creation-time)
+		(setf (point-creation-time p) (second n)))
+	       ((equal (first n) 'update-time)
+		(setf (point-update-time p) (second n)))
 	       ((equal (first n) 'creation-source)
 		(setf (point-creation-source p) (second n)))
 	       ((equal (first n) 'update-source)
@@ -233,62 +240,6 @@ that type."
 		(setf (point-datum p) (second n)))
 	       ))
 	  point-data))
-
-;;  Decendant of 2d-point.  Marks stops.
-(defclass stop-point (2d-point)
-  ((count :accessor point-count
-	  :initarg :count
-	  :initform 1)
-   (ignore :accessor point-ignore
-	   :initarg ignore
-	   :initform nil)))
-
-(defmethod point-serialize ((p stop-point))
-  "Serialize a stop point."
-  (append
-   (list
-    '(type stop-point)
-    (list 'lat (point-lat p))
-    (list 'lon (point-lon p))
-    (list 'datum (point-datum p))
-    (list 'count (point-count p))
-    (list 'ignore (point-ignore p)))
-   (user-info-serialize p)))
-
-(defmethod point-deserialize-method ((p stop-point) point-data)
-  "Create an object from the data dumped by 'point-serialize'.  If the
-optional point-type value is supplied, the created object will be of
-that type."
-  (user-info-deserialize-method p point-data)
-  (mapcar #'(lambda (n)
-	      (cond
-	       ((equal (first n) 'lat)
-		(setf (point-lat p) (second n)))
-	       ((equal (first n) 'lon)
-		(setf (point-lon p) (second n)))
-	       ((equal (first n) 'count)
-		(setf (point-count p) (second n)))
-	       ((equal (first n) 'ignore)
-		(setf (point-ignore p) (second n)))
-	       ((equal (first n) 'datum)
-		(setf (point-datum p) (second n)))
-	       ))
-	  point-data))
-
-;;  Decendant of 2d-point.  Adds depth, magnitude, reporting station, number of observations.
-(defclass eqs-point (2d-point)
-  ((depth :accessor point-depth
-	:initarg :depth
-	:initform nil)
-   (magnitude :accessor point-magnitude
-	      :initarg :magnitude
-	      :initform nil)
-   (reporting-station :accessor point-reporting-station
-		      :initarg :reporting-station
-		      :initform nil)
-   (number-of-observations :accessor point-number-of-observations
-			   :initarg :number-of-observations
-			   :initform nil)))
 
 ;;  Decendant of 2d-point.  Adds altitude.
 (defclass 3d-point (2d-point)
@@ -381,23 +332,6 @@ that type."
 	       ))
 	  point-data))
 
-(defclass eq-point (3d-point)
-  ((src :accessor point-src
-	:initarg :src
-	:initform nil)
-   (eqid :accessor point-eqid
-	 :initarg :eqid
-	 :initform nil)
-   (version :accessor point-version
-	    :initarg :version
-	    :initform nil)
-   (magnitude :accessor point-magnitude
-	      :initarg :magnitude
-	      :initform nil)
-   (nst :accessor point-nst
-	:initarg :nst
-	:initform nil)))
-
 ;; -=-=-=-=-=-=- FUNCTIONS -=-=-=-=-=-=-
 
 (defun point-deserialize (point-data &optional point-type)
@@ -423,30 +357,60 @@ that type."
        t
      nil))
 
-(defun calc-bearing (point-a point-b)
-  "Calculate the bearing between point-a and point-b.  Returns a
-value between 0 and 360."
+(defun calc-distance (point-a point-b)
+  "Given two points, return the distance between them in radians."
+  (if
+      (equal point-a point-b)
+      0
+    (let
+	((lat1 (deg-to-rad (point-lat point-a)))
+	 (lon1 (deg-to-rad (- 0 (point-lon point-a))))
+	 (lat2 (deg-to-rad (point-lat point-b)))
+	 (lon2 (deg-to-rad (- 0 (point-lon point-b)))))
+      (acos
+       (+
+	(* (sin lat1) (sin lat2))
+	(* (cos lat1) (cos lat2) (cos (- lon1 lon2))))))))
+
+(defun calc-distance-shorter (point-a point-b)
+  "Given two points, return the distance between them in radians. More
+accurate than calc-distance."
+  (if
+      (equal point-a point-b)
+      0
+    (let
+	((lat1 (deg-to-rad (point-lat point-a)))
+	 (lon1 (deg-to-rad (- 0 (point-lon point-a))))
+	 (lat2 (deg-to-rad (point-lat point-b)))
+	 (lon2 (deg-to-rad (- 0 (point-lon point-b)))))
+      (* 2 (asin (sqrt (+ (expt (sin (/ (- lat1 lat2) 2)) 2)
+			  (* (expt (sin (/ (- lon1 lon2) 2)) 2) (cos lat2) (cos lat1)))))))))
+
+(defun calc-gc-bearing (point-a point-b)
+  "Calculate the bearing between point-a and point-b. Fails if either
+point is a pole. Returns a value between 0 and 360."
   (if
       ;; If the points are the same, why do the math?
       (point-same-p point-a point-b)
       0
     (let
-	((lat1 (d2r (- 0 (point-lat point-b))))
-	 (lon1 (d2r (point-lon point-b)))
-	 (lat2 (d2r (- 0 (point-lat point-a))))
-	 (lon2 (d2r (point-lon point-a))))
+	((lat1 (deg-to-rad (- 0 (point-lat point-b))))
+	 (lon1 (deg-to-rad (point-lon point-b)))
+	 (lat2 (deg-to-rad (- 0 (point-lat point-a))))
+	 (lon2 (deg-to-rad (point-lon point-a))))
+      (rad-to-deg (my-mod (atan (* (sin (- lon1 lon2)) (cos lat2))
+				(- (* (cos lat1) (sin lat2)) (* (sin lat1) (cos lat2) (cos (- lon1 lon2))))) (* 2 pi))))))
 
-      (r2d (my-mod (atan (* (sin (- lon1 lon2)) (cos lat2))
-			 (- (* (cos lat1) (sin lat2)) (* (sin lat1) (cos lat2) (cos (- lon1 lon2))))) (* 2 pi))))))
-
-(defun calc-bearing-180 (point-a point-b)
-  "Identical to 'calc-bearing', except returns an angle from -180 to
+(defun calc-gc-bearing-180 (point-a point-b)
+  "Identical to 'calc-gc-bearing', except returns an angle from -180 to
 +180 instead of 0 to 360."
   (let
-      ((tmp (calc-bearing point-a point-b)))
+      ((tmp (calc-gc-bearing point-a point-b)))
     (if (< tmp 180)
 	tmp
       (- tmp 360))))
+
+;; here
 
 (defun bearing-diff (point-a point-b point-c)
   "Return the difference in angles between point-a and point-b
@@ -457,8 +421,8 @@ vs. point-b and point-c."
        (point-same-p point-a point-c))
       0
     (let*
-	((a (calc-bearing point-a point-b))
-	 (b (calc-bearing point-b point-c))
+	((a (calc-gc-bearing point-a point-b))
+	 (b (calc-gc-bearing point-b point-c))
 	 (c (- b a)))
 
       (cond
@@ -473,63 +437,6 @@ vs. point-b and point-c."
        (t
 	nil)))))
 
-(defun calc-distance (point-a point-b)
-  "Calculate the distance in statute miles between point-a and
-point-b."
-  (if
-      (equal point-a point-b)
-      0
-    (let
-	((lat1 (d2r (point-lat point-a)))
-	 (lon1 (d2r (point-lon point-a)))
-	 (lat2 (d2r (point-lat point-b)))
-	 (lon2 (d2r (point-lon point-b))))
-      (/ (*
-	  pi *earth-radius*
-	  (* 2 (asin (sqrt (+ (expt (sin (/ (- lat1 lat2) 2)) 2)
-			      (* (expt (sin (/ (- lon1 lon2) 2)) 2) (cos lat2) (cos lat1))))))
-	  ) pi)
-      )))
-
-(defun calc-distance-flat (point-a point-b)
-  "Calculate the distance in statute miles between point-a and point-b
-on a plane.  This is much more accurate for very small distances than
-'calc-distance', but only works for distances of up to about ten
-miles, because it does not take the curvature of the earth into
-account.  If neither supplied point includes altitude, the altitude is
-considered to be zero.  If one point has altitude and the other does
-not, the altitude used will be that of the point that supplied an
-altitude.  If both points include altitude, the actual altitudes of
-both points will be used.  This function assumes that altitude will be
-supplied in feet."
-  (let
-      ((r (* 5280 *earth-radius*))
-       (point-a-alt (assoc 'alt (point-serialize point-a)))
-       (point-b-alt (assoc 'alt (point-serialize point-b)))
-       (point-a-lat (d2r (point-lat point-a)))
-       (point-a-lon (d2r (point-lon point-a)))
-       (point-b-lat (d2r (point-lat point-b)))
-       (point-b-lon (d2r (point-lon point-b))))
-
-    (unless (null point-a-alt)
-      (setf point-a-alt (point-alt point-a)))
-    (unless (null point-b-alt)
-      (setf point-b-alt (point-alt point-b)))
-
-    (cond
-     ((and (null point-a-alt) (null point-b-alt))
-      (setf point-a-alt 0)
-      (setf point-b-alt 0))
-     ((and (null point-a-alt) (not (null point-b-alt)))
-      (setf point-a-alt point-b-alt))
-     ((and (not (null point-a-alt)) (null point-b-alt))
-      (setf point-b-alt point-a-alt)))
-
-    (/ (sqrt (+
-	      (expt (- (* (+ r point-b-alt) (cos point-b-lat) (cos point-b-lon)) (* (+ r point-a-alt) (cos point-a-lat) (cos point-a-lon))) 2)
-	      (expt (- (* (+ r point-b-alt) (sin point-b-lat)) (* (+ r point-a-alt) (sin point-a-lat))) 2)
-	      (expt (- (* (+ r point-b-alt) (cos point-b-lat) (cos point-b-lon)) (* (+ r point-a-alt) (cos point-a-lat) (cos point-a-lon))) 2))) 5280)))
-
 (defun calc-new-point (point-a d az)
   "Returns an object of type 2d-point given a starting point,
 distance in statute miles, and azimuth.  Using this simple (and
@@ -538,19 +445,19 @@ is <= 1/4 the circumference of the Earth.  Allowing for longer
 distances requires a much more complex (and slow) solution.  For
 my purposes (usually <= 100 miles), this is fine."
   (let
-      ((point-a-lat (d2r (point-lat point-a)))
-       (point-a-lon (d2r (point-lon point-a)))
+      ((point-a-lat (deg-to-rad (point-lat point-a)))
+       (point-a-lon (deg-to-rad (point-lon point-a)))
        (lat nil)
        (lon nil)
-       (dist (/ d *earth-radius*))
-       (azimuth (- 0 (d2r az))))
+       (dist (/ d earth-radius))
+       (azimuth (- 0 (deg-to-rad az))))
 
     (setf lat (asin (+ (* (sin point-a-lat) (cos dist)) (* (cos point-a-lat) (sin dist) (cos azimuth)))))
     (if (eq (cos point-a-lat) 0.0)
 	(setf lon point-a-lon)
       (setf lon (- (my-mod (+ pi (- point-a-lon (asin (/ (* (sin azimuth) (sin dist)) (cos lat))))) (* 2 pi)) pi)))
 
-    (make-instance '2d-point :creation-source *point-generated* :lat (r2d lat) :lon (r2d lon))))
+    (make-instance '2d-point :creation-source point-generated :lat (rad-to-deg lat) :lon (rad-to-deg lon))))
 
 (defun point-predict (point-a step)
   "This function predicts the location of where you'll be given your
@@ -603,3 +510,5 @@ current course and speed 'step' seconds from now."
 
 ;;     55 points (x > 54, 130 < y < 172)
 
+(defvar *lax* (make-instance '2d-point :lat (dms-to-dd 33 57) :lon (dms-to-dd -118 24)))
+(defvar *jfk* (make-instance '2d-point :lat (dms-to-dd 40 38) :lon (dms-to-dd -73 47)))

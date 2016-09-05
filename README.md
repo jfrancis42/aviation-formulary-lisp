@@ -1,6 +1,6 @@
 # aviation-formulary-lisp
-A Common Lisp library implementing the algorithms found in the
-Aviation Formulary found at: http://williams.best.vwh.net/avform.htm
+A Common Lisp library implementing the algorithms in the Aviation
+Formulary v1.46 found at: http://williams.best.vwh.net/avform.htm
 
 WORK IN PROGRESS...
 WORK IN PROGRESS...
