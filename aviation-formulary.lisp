@@ -32,6 +32,8 @@
 ;; Sources for points.
 (defconstant point-user 0)
 (defconstant point-generated 1)
+(defconstant point-gps 2)
+(defconstant point-spot 3)
 
 ;; radians to km
 (defmacro rad-to-km (r) `(* ,r *earth-radius*))
@@ -212,6 +214,102 @@ that type."
 	       ))
 	  point-data))
 
+;;  Decendant of 2d-point.  Adds fields for SPOT service.
+(defclass spot-point (2d-point)
+  ((id :accessor id
+         :initarg :id
+         :initform nil)
+   (messenger-id :accessor messenger-id
+                 :initarg :messenger-id
+                 :initform nil)
+   (unix-time :accessor unix-time
+        :initarg :unix-time
+        :initform nil)
+   (message-type :accessor message-type
+        :initarg :message-type
+        :initform nil)
+   (model-id :accessor model-id
+        :initarg :model-id
+        :initform nil)
+   (show-custom-msg :accessor show-custom-msg
+        :initarg :show-custom-msg
+        :initform nil)
+   (date-time :accessor date-time
+        :initarg :date-time
+        :initform nil)
+   (battery-state :accessor battery-state
+        :initarg :battery-state
+        :initform nil)
+   (hidden :accessor hidden
+        :initarg :hidden
+        :initform nil)
+   ))
+
+(defmethod point-serialize ((p spot-point))
+  "Serialize a SPOT point."
+  (append
+   (list
+    '(type spot-point)
+    (list 'lat (point-lat p))
+    (list 'lon (point-lon p))
+    (list 'datum (point-datum p))
+    (list 'id (id p))
+    (list 'unix-time (unix-time p))
+    (list 'message-type (message-type p))
+    (list 'model-id (model-id p))
+    (list 'show-custom-msg (show-custom-msg p))
+    (list 'date-time (date-time p))
+    (list 'battery-state (battery-state p))
+    (list 'hidden (hidden p))
+    )
+   (point-metadata-serialize p)))
+
+(defmethod pp ((p spot-point))
+  "Pretty print a spot point."
+  (format t "Lat:  ~F~%" (point-lat p))
+  (format t "Lon:  ~F~%" (point-lon p))
+  (format t "Id:  ~F~%" (id p))
+  (format t "Unix-Time:  ~F~%" (unix-time p))
+  (format t "Message Type:  ~F~%" (message-type p))
+  (format t "Model Id:  ~F~%" (model-id p))
+  (format t "Show Custom Msg:  ~F~%" (show-custom-msg p))
+  (format t "Date-Time:  ~F~%" (date-time p))
+  (format t "Battery State:  ~F~%" (battery-state p))
+  (format t "Hidden:  ~F~%" (hidden p))
+  (format t "Datum:  ~A~%" (point-datum p)))
+
+(defmethod point-deserialize-method ((p spot-point) point-data)
+  "Create an object from the data dumped by 'point-serialize'.  If the
+optional point-type value is supplied, the created object will be of
+that type."
+  (point-metadata-deserialize-method p point-data)
+  (mapcar #'(lambda (n)
+	      (cond
+	       ((equal (first n) 'lat)
+		(setf (point-lat p) (second n)))
+	       ((equal (first n) 'lon)
+		(setf (point-lon p) (second n)))
+	       ((equal (first n) 'id)
+		(setf (id p) (second n)))
+	       ((equal (first n) 'unix-time)
+		(setf (unix-time p) (second n)))
+	       ((equal (first n) 'message-type)
+		(setf (message-type p) (second n)))
+	       ((equal (first n) 'model-id)
+		(setf (model-id p) (second n)))
+	       ((equal (first n) 'show-custom-msg)
+		(setf (show-custom-msg p) (second n)))
+	       ((equal (first n) 'date-time)
+		(setf (date-time p) (second n)))
+	       ((equal (first n) 'battery-state)
+		(setf (battery-state p) (second n)))
+	       ((equal (first n) 'hidden)
+		(setf (hidden p) (second n)))
+	       ((equal (first n) 'datum)
+		(setf (point-datum p) (second n)))
+	       ))
+	  point-data))
+
 ;;  Decendant of 2d-point.  Adds altitude.
 (defclass 3d-point (2d-point)
   ((alt :accessor point-alt
@@ -247,6 +345,63 @@ that type."
 		(setf (point-lat p) (second n)))
 	       ((equal (first n) 'lon)
 		(setf (point-lon p) (second n)))
+	       ((equal (first n) 'alt)
+		(setf (point-alt p) (second n)))
+	       ((equal (first n) 'datum)
+		(setf (point-datum p) (second n)))
+	       ))
+	  point-data))
+
+;; Decendant of 3d point.  Adds speed, course, and number of
+;; satellites used information.
+(defclass gps-point (3d-point)
+  ((spd :accessor point-spd
+	:initarg :spd
+	:initform nil)
+   (sats :accessor point-sats
+	 :initarg :sats
+	 :initform nil)
+   (crs :accessor point-crs
+	:initarg :crs
+	:initform nil)))
+
+(defmethod point-serialize ((p gps-point))
+  "Serialize a GPS point."
+  (append
+   (list
+    '(type gps-point)
+    (list 'lat (point-lat p))
+    (list 'lon (point-lon p))
+    (list 'datum (point-datum p))
+    (list 'alt (point-alt p))
+    (list 'spd (point-spd p))
+    (list 'crs (point-crs p)))
+   (user-info-serialize p)))
+
+(defmethod pp ((p gps-point))
+  "Pretty print a GPS point."
+  (format t "Lat:  ~F~%" (point-lat p))
+  (format t "Lon:  ~F~%" (point-lon p))
+  (format t "Alt:  ~F~%" (point-alt p))
+  (format t "Spd:  ~F~%" (point-spd p))
+  (format t "Crs:  ~F~%" (point-crs p))
+  (format t "Datum:  ~A~%" (point-datum p)))
+
+(defmethod point-deserialize-method ((p gps-point) point-data)
+  "Create an object from the data dumped by 'point-serialize'.  If the
+optional point-type value is supplied, the created object will be of
+that type."
+  (user-info-deserialize-method p point-data)
+  (mapcar #'(lambda (n)
+	      (cond
+	       ((equal (first n) 'lat)
+		(setf (point-lat p) (second n)))
+	       ((equal (first n) 'lon)
+		(setf (point-lon p) (second n)))
+	       ((equal (first n) 'spd)
+		(setf (point-spd p) (second n)))
+	       ((equal (first n) 'crs)
+		(setf (point-crs p) (second n)))
 	       ((equal (first n) 'alt)
 		(setf (point-alt p) (second n)))
 	       ((equal (first n) 'datum)
