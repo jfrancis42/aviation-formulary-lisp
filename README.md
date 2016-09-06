@@ -37,9 +37,9 @@ Note that the package can be referred to by it's nickname "af" rather than the f
 The simplest object is a 2d-point object. Points can be created like this:
 
 ```
-CL-USER> (defvar *trinity-site* (make-instance '2d-point :lat 33.6772929 :lon -106.4752871 :name "Trinity Site" :description "Location of the first atomic explosion."))
+CL-USER> (defvar *trinity-site* (make-instance 'af:2d-point :lat 33.6772929 :lon -106.4752871 :name "Trinity Site" :description "Location of the first atomic explosion."))
 *TRINITY-SITE*
-CL-USER> (defvar *alamogordo* (make-instance '2d-point :lat 32.8995 :lon -105.9603 :name "Alamogordo" :description "The city of Alamogordo, NM."))
+CL-USER> (defvar *alamogordo* (make-instance 'af:2d-point :lat 32.8995 :lon -105.9603 :name "Alamogordo" :description "The city of Alamogordo, NM."))
 *ALAMOGORDO*
 CL-USER>
 ```

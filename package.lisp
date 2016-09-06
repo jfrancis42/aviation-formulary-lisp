@@ -3,7 +3,9 @@
 (defpackage #:aviation-formulary
   (:nicknames :af)
   (:use #:cl)
-  (:export :pp
+  (:export :2d-point
+	   :3d-point
+	   :pp
 	   :point-user
 	   :point-generated
 	   :rad-to-km
