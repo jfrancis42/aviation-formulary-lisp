@@ -1,6 +1,7 @@
 ;;;; package.lisp
 
 (defpackage #:aviation-formulary
+  (:nicknames :af)
   (:use #:cl)
   (:export :pp
 	   :point-user
