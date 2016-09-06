@@ -42,7 +42,7 @@
 (defmacro rad-to-km (r) `(* ,r *earth-radius*))
 
 ;; km to radians
-(defmacro rad-to-km (km) `(/ ,km *earth-radius*))
+(defmacro km-to-rad (km) `(/ ,km *earth-radius*))
 
 ;; degrees to radians
 (defmacro deg-to-rad (d) `(/ (* ,d pi) 180))
@@ -387,77 +387,57 @@ accurate than calc-distance."
 			  (* (expt (sin (/ (- lon1 lon2) 2)) 2) (cos lat2) (cos lat1)))))))))
 
 (defun calc-gc-bearing (point-a point-b)
-  "Calculate the bearing between point-a and point-b. Fails if either
-point is a pole. Returns a value between 0 and 360."
+  "Calculate the bearing in radians between point-a and point-b. Fails
+if either point is a pole."
   (if
-      ;; If the points are the same, why do the math?
       (point-same-p point-a point-b)
       0
     (let
-	((lat1 (deg-to-rad (- 0 (point-lat point-b))))
-	 (lon1 (deg-to-rad (point-lon point-b)))
-	 (lat2 (deg-to-rad (- 0 (point-lat point-a))))
-	 (lon2 (deg-to-rad (point-lon point-a))))
-      (rad-to-deg (my-mod (atan (* (sin (- lon1 lon2)) (cos lat2))
-				(- (* (cos lat1) (sin lat2)) (* (sin lat1) (cos lat2) (cos (- lon1 lon2))))) (* 2 pi))))))
-
-(defun calc-gc-bearing-180 (point-a point-b)
-  "Identical to 'calc-gc-bearing', except returns an angle from -180 to
-+180 instead of 0 to 360."
-  (let
-      ((tmp (calc-gc-bearing point-a point-b)))
-    (if (< tmp 180)
-	tmp
-      (- tmp 360))))
-
-;; here
-
-(defun bearing-diff (point-a point-b point-c)
-  "Return the difference in angles between point-a and point-b
-vs. point-b and point-c."
-  (if
-      (and
-       (point-same-p point-a point-b)
-       (point-same-p point-a point-c))
-      0
-    (let*
-	((a (calc-gc-bearing point-a point-b))
-	 (b (calc-gc-bearing point-b point-c))
-	 (c (- b a)))
-
-      (cond
-       ((and
-	 (<= c 180)
-	 (>= c -180))
-	c)
-       ((< c -180)
-	(+ 360 c))
-       ((> c 180)
-	(* -1 (- 360 c)))
-       (t
-	nil)))))
+	((lat1 (deg-to-rad (point-lat point-a)))
+	 (lon1 (deg-to-rad (- 0 (point-lon point-a))))
+	 (lat2 (deg-to-rad (point-lat point-b)))
+	 (lon2 (deg-to-rad (- 0 (point-lon point-b))))
+	 (d (calc-distance point-a point-b)))
+      (if (< (sin (- lon2 lon1)) 0)
+	  (acos (/ (- (sin lat2) (* (sin lat1) (cos d))) (* (sin d) (cos lat1))))
+	  (- (* 2 pi) (acos (/ (- (sin lat2) (* (sin lat1) (cos d))) (* (sin d) (cos lat1)))))))))
 
 (defun calc-new-point (point-a d az)
-  "Returns an object of type 2d-point given a starting point,
-distance in statute miles, and azimuth.  Using this simple (and
-fast) algorythm, you're limited to distances where the longitude
-is <= 1/4 the circumference of the Earth.  Allowing for longer
-distances requires a much more complex (and slow) solution.  For
-my purposes (usually <= 100 miles), this is fine."
+  "Given a point, return a new point that is d radians away from the
+original point at azimuth az radians."
   (let
-      ((point-a-lat (deg-to-rad (point-lat point-a)))
-       (point-a-lon (deg-to-rad (point-lon point-a)))
-       (lat nil)
-       (lon nil)
-       (dist (/ d earth-radius))
-       (azimuth (- 0 (deg-to-rad az))))
+      ((lat1 (deg-to-rad (point-lat point-a)))
+       (lon1 (deg-to-rad (- 0 (point-lon point-a))))
+       (lat nil) (lon nil) (dlon nil))
+    (setf lat (asin (+ (* (sin lat1) (cos d)) (* (cos lat1) (sin d) (cos az)))))
+    (setf dlon (atan (* (sin az) (sin d) (cos lat1)) (- (cos d) (* (sin lat1) (sin lat)))))
+    (setf lon (- 0 (- (my-mod (+ (- lon1 dlon) pi) (* 2 pi)) pi)))
+    (make-instance '2d-point :lat (rad-to-deg lat) :lon (rad-to-deg lon))))
 
-    (setf lat (asin (+ (* (sin point-a-lat) (cos dist)) (* (cos point-a-lat) (sin dist) (cos azimuth)))))
-    (if (eq (cos point-a-lat) 0.0)
-	(setf lon point-a-lon)
-      (setf lon (- (my-mod (+ pi (- point-a-lon (asin (/ (* (sin azimuth) (sin dist)) (cos lat))))) (* 2 pi)) pi)))
+;;here
 
-    (make-instance '2d-point :creation-source point-generated :lat (rad-to-deg lat) :lon (rad-to-deg lon))))
+
+;(defun calc-new-point (point-a d az)
+;  "Returns an object of type 2d-point given a starting point,
+;distance in statute miles, and azimuth.  Using this simple (and
+;fast) algorythm, you're limited to distances where the longitude
+;is <= 1/4 the circumference of the Earth.  Allowing for longer
+;distances requires a much more complex (and slow) solution.  For
+;my purposes (usually <= 100 miles), this is fine."
+;  (let
+;      ((point-a-lat (deg-to-rad (point-lat point-a)))
+;       (point-a-lon (deg-to-rad (point-lon point-a)))
+;       (lat nil)
+;       (lon nil)
+;       (dist (/ d earth-radius))
+;       (azimuth (- 0 (deg-to-rad az))))
+;
+;    (setf lat (asin (+ (* (sin point-a-lat) (cos dist)) (* (cos point-a-lat) (sin dist) (cos azimuth)))))
+;    (if (eq (cos point-a-lat) 0.0)
+;	(setf lon point-a-lon)
+;      (setf lon (- (my-mod (+ pi (- point-a-lon (asin (/ (* (sin azimuth) (sin dist)) (cos lat))))) (* 2 pi)) pi)))
+;
+;    (make-instance '2d-point :creation-source point-generated :lat (rad-to-deg lat) :lon (rad-to-deg lon))))
 
 (defun point-predict (point-a step)
   "This function predicts the location of where you'll be given your
@@ -510,5 +490,5 @@ current course and speed 'step' seconds from now."
 
 ;;     55 points (x > 54, 130 < y < 172)
 
-(defvar *lax* (make-instance '2d-point :lat (dms-to-dd 33 57) :lon (dms-to-dd -118 24)))
-(defvar *jfk* (make-instance '2d-point :lat (dms-to-dd 40 38) :lon (dms-to-dd -73 47)))
+(defvar *lax* (make-instance '2d-point :lat 33.95 :lon -118.4))
+(defvar *jfk* (make-instance '2d-point :lat 40.6333333 :lon -73.78333336))
