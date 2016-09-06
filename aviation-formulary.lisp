@@ -1,6 +1,6 @@
 ;;;; aviation-formulary-lisp.lisp
 
-;(in-package #:aviation-formulary)
+(in-package #:aviation-formulary)
 
 ;; Unit conversions, etc.
 ;;
@@ -22,9 +22,6 @@
 ;; radians per degree
 (defconstant radians-per-degree (/ pi 180))
 
-;; The radius of the Earth in miles (roughly the WGS84/NAD83 value).
-(defconstant earth-radius 3956.09)
-
 ;; Different Earth radius values.
 (defconstant earth-radius-nm-historic 6366.71)
 (defconstant earth-radius-wgs84-eq-radius 6378.137)
@@ -33,10 +30,8 @@
 (defvar *earth-radius* earth-radius-nm-historic)
 
 ;; Sources for points.
-(defconstant point-gps 0)
-(defconstant point-interpolated 1)
-(defconstant point-user 2)
-(defconstant point-generated 3)
+(defconstant point-user 0)
+(defconstant point-generated 1)
 
 ;; radians to km
 (defmacro rad-to-km (r) `(* ,r *earth-radius*))
@@ -59,9 +54,9 @@
 ;; my own modulus
 (defun my-mod (y x) (- y (* x (floor (/ y x)))))
 
-(defun decimal-to-cardinal-course (course)
-  "Given a decimal compass heading, return a string with the English
-cardinal name."
+(defun deg-to-cardinal-course (course)
+  "Given a compass heading in degrees, return a string with the
+English cardinal name."
   (cond
    ((and (>= course 337.5) (<= course 360.0))
     (format nil "North"))
@@ -84,24 +79,6 @@ cardinal name."
    (t
     (format nil "This can't happen"))))
 
-(defun dms-to-dd (d m &optional (s 0.0))
-  "Convert Degrees, Minutes, and (optionally) seconds to decimal
-degrees."
-  (* 1.0 (+ d (/ (+ m (/ s 60)) 60))))
-
-(defun string-to-number (str)
-  "Convert a number in string form to a number."
-  (if
-      (or
-       (null str)
-       (equal "" str))
-      0
-      (let ((tmp 0.0))
-	(setf tmp (read-from-string str))
-	(if (numberp tmp)
-	    tmp
-	    nil))))
-
 ;; Serial number for points.  Start at -1 so the first point is point
 ;; 0.
 (defvar *point-serial-number* -1)
@@ -111,37 +88,33 @@ degrees."
 ;; This class provides creation, source, user, and modification
 ;; information.  It is not intended to be instantiated, it's here for
 ;; the sole purpose of being inherited.
-(defclass user-info ()
+(defclass point-metadata ()
   ((serial-number :accessor point-serial-number
 		  :initarg :serial-number
 		  :initform (bt:with-lock-held (*serial-lock*) (setf *point-serial-number* (+ 1 *point-serial-number*))))
    (creation-time :accessor point-creation-time
 		    :initarg :creation-time
-		    :initform (local-time:now))
+		    :initform (local-time:timestamp-to-unix (local-time:now)))
    (creation-source :accessor point-creation-source
 		    :initarg :creation-source
-		    :initform nil)
-   (update-time :accessor point-update-time
-		  :initarg :update-time
-		  :initform nil)
-   (update-source :accessor point-update-source
-		  :initarg :update-source
-		  :initform nil)
+		    :initform point-user)
+   (name :accessor point-name
+	 :initarg :name
+	 :initform "")
    (description :accessor point-description
 		:initarg :description
-		:initform nil)))
+		:initform "")))
 
-(defmethod user-info-serialize ((p user-info))
-  "Serialize the user-info part of the object."
+(defmethod point-metadata-serialize ((p point-metadata))
+  "Serialize the point-metadata part of the object."
   (list
    (list 'serial-number (point-serial-number p))
    (list 'creation-time (point-creation-time p))
    (list 'creation-source (point-creation-source p))
-   (list 'update-time (point-update-time p))
-   (list 'update-source (point-update-source p))
+   (list 'name (format nil "\"~A\"" (point-name p)))
    (list 'description (format nil "\"~A\"" (point-description p)))))
 
-(defmethod user-info-deserialize-method ((p user-info) point-data)
+(defmethod point-metadata-deserialize-method ((p point-metadata) point-data)
   "Create an object from the data dumped by 'point-serialize'.  If the
 optional point-type value is supplied, the created object will be of
 that type."
@@ -151,12 +124,10 @@ that type."
 		(setf (point-serial-number p) (second n)))
 	       ((equal (first n) 'creation-time)
 		(setf (point-creation-time p) (second n)))
-	       ((equal (first n) 'update-time)
-		(setf (point-update-time p) (second n)))
 	       ((equal (first n) 'creation-source)
 		(setf (point-creation-source p) (second n)))
-	       ((equal (first n) 'update-source)
-		(setf (point-update-source p) (second n)))
+	       ((equal (first n) 'name)
+		(setf (point-name p) (second n)))
 	       ((equal (first n) 'description)
 		(setf (point-description p) (second n)))
 	       ))
@@ -178,10 +149,10 @@ that type."
 	  :initarg :datum
 	  :initform "WGS84")))
 
-;; The 2d point is a superclass of 'point' and 'user-info', and
+;; The 2d point is a superclass of 'point' and 'point-metadata', and
 ;; becomes the base class of all the other types of points we come up
 ;; with.
-(defclass 2d-point (point user-info)
+(defclass 2d-point (point point-metadata)
   ())
 
 (defmethod url-photo ((p 2d-point))
@@ -217,7 +188,7 @@ that type."
     (list 'lat (point-lat p))
     (list 'lon (point-lon p))
     (list 'datum (point-datum p)))
-   (user-info-serialize p)))
+   (point-metadata-serialize p)))
 
 (defmethod pp ((p 2d-point))
   "Pretty print a 2d point."
@@ -229,7 +200,7 @@ that type."
   "Create an object from the data dumped by 'point-serialize'.  If the
 optional point-type value is supplied, the created object will be of
 that type."
-  (user-info-deserialize-method p point-data)
+  (point-metadata-deserialize-method p point-data)
   (mapcar #'(lambda (n)
 	      (cond
 	       ((equal (first n) 'lat)
@@ -256,7 +227,7 @@ that type."
     (list 'lon (point-lon p))
     (list 'datum (point-datum p))
     (list 'alt (point-alt p)))
-   (user-info-serialize p)))
+   (point-metadata-serialize p)))
 
 (defmethod pp ((p 3d-point))
   "Pretty print a 3d point."
@@ -269,7 +240,7 @@ that type."
   "Create an object from the data dumped by 'point-serialize'.  If the
 optional point-type value is supplied, the created object will be of
 that type."
-  (user-info-deserialize-method p point-data)
+  (point-metadata-deserialize-method p point-data)
   (mapcar #'(lambda (n)
 	      (cond
 	       ((equal (first n) 'lat)
@@ -278,55 +249,6 @@ that type."
 		(setf (point-lon p) (second n)))
 	       ((equal (first n) 'alt)
 		(setf (point-alt p) (second n)))
-	       ((equal (first n) 'datum)
-		(setf (point-datum p) (second n)))
-	       ))
-	  point-data))
-
-;;  Decendant of 2d-point.
-(defclass nav-point (2d-point)
-  ((alt :accessor point-freq
-	:initarg :freq
-	:initform nil)
-   (var :accessor point-var
-	:initarg :var
-	:initform nil)))
-
-(defmethod point-serialize ((p nav-point))
-  "Serialize a 3d point."
-  (append
-   (list
-    '(type nav-point)
-    (list 'lat (point-lat p))
-    (list 'lon (point-lon p))
-    (list 'datum (point-datum p))
-    (list 'var (point-var p))
-    (list 'freq (point-freq p)))
-   (user-info-serialize p)))
-
-(defmethod pp ((p nav-point))
-  "Pretty print a 3d point."
-  (format t "Lat:  ~F~%" (point-lat p))
-  (format t "Lon:  ~F~%" (point-lon p))
-  (format t "Freq:  ~F~%" (point-freq p))
-  (format t "Variation:  ~F~%" (point-var p))
-  (format t "Datum:  ~A~%" (point-datum p)))
-
-(defmethod point-deserialize-method ((p nav-point) point-data)
-  "Create an object from the data dumped by 'point-serialize'.  If the
-optional point-type value is supplied, the created object will be of
-that type."
-  (user-info-deserialize-method p point-data)
-  (mapcar #'(lambda (n)
-	      (cond
-	       ((equal (first n) 'lat)
-		(setf (point-lat p) (second n)))
-	       ((equal (first n) 'lon)
-		(setf (point-lon p) (second n)))
-	       ((equal (first n) 'var)
-		(setf (point-var p) (second n)))
-	       ((equal (first n) 'freq)
-		(setf (point-freq p) (second n)))
 	       ((equal (first n) 'datum)
 		(setf (point-datum p) (second n)))
 	       ))
@@ -412,46 +334,29 @@ original point at azimuth az radians."
     (setf lat (asin (+ (* (sin lat1) (cos d)) (* (cos lat1) (sin d) (cos az)))))
     (setf dlon (atan (* (sin az) (sin d) (cos lat1)) (- (cos d) (* (sin lat1) (sin lat)))))
     (setf lon (- 0 (- (my-mod (+ (- lon1 dlon) pi) (* 2 pi)) pi)))
-    (make-instance '2d-point :lat (rad-to-deg lat) :lon (rad-to-deg lon))))
+    (make-instance '2d-point :creation-source point-generated :lat (rad-to-deg lat) :lon (rad-to-deg lon))))
 
-;;here
+(defun serialize-points-to-file (points filename)
+  "Write a list of points to a file."
+  (with-open-file
+   (file-handle filename :direction :output :if-does-not-exist :create :if-exists :supersede)
+		  (mapcar
+		   #'(lambda (n)
+		       (format file-handle "~A~%" (point-serialize n)))
+		   points)))
 
+(defun deserialize-points-from-file (filename)
+  "Read in a list of points from a file."
+  (let ((tmp nil))
+    (with-open-file (file-handle filename :direction :input)
+      (do
+       ((line (read file-handle nil 'eof)
+	      (read file-handle nil 'eof)))
+       ((eql line 'eof)
+	(return tmp))
+	(setf tmp (cons (point-deserialize line) tmp))))))
 
-;(defun calc-new-point (point-a d az)
-;  "Returns an object of type 2d-point given a starting point,
-;distance in statute miles, and azimuth.  Using this simple (and
-;fast) algorythm, you're limited to distances where the longitude
-;is <= 1/4 the circumference of the Earth.  Allowing for longer
-;distances requires a much more complex (and slow) solution.  For
-;my purposes (usually <= 100 miles), this is fine."
-;  (let
-;      ((point-a-lat (deg-to-rad (point-lat point-a)))
-;       (point-a-lon (deg-to-rad (point-lon point-a)))
-;       (lat nil)
-;       (lon nil)
-;       (dist (/ d earth-radius))
-;       (azimuth (- 0 (deg-to-rad az))))
-;
-;    (setf lat (asin (+ (* (sin point-a-lat) (cos dist)) (* (cos point-a-lat) (sin dist) (cos azimuth)))))
-;    (if (eq (cos point-a-lat) 0.0)
-;	(setf lon point-a-lon)
-;      (setf lon (- (my-mod (+ pi (- point-a-lon (asin (/ (* (sin azimuth) (sin dist)) (cos lat))))) (* 2 pi)) pi)))
-;
-;    (make-instance '2d-point :creation-source point-generated :lat (rad-to-deg lat) :lon (rad-to-deg lon))))
-
-(defun point-predict (point-a step)
-  "This function predicts the location of where you'll be given your
-current course and speed 'step' seconds from now."
-  (let*
-      ((now (point-serialize point-a))
-       (spd (second (assoc 'spd now)))
-       (crs (second (assoc 'crs now))))
-    (calc-new-point point-a (* step (/ spd 3600)) crs)))
-
-;; -= other other =-
-
-
-;; per the aviation formulary:
+;; -= other stuff =-
 
 ;;x=latitude (N degrees) y=longitude (W degrees) var= variation (degrees)
 
@@ -459,10 +364,11 @@ current course and speed 'step' seconds from now."
 ;;        0.0116268*x*y - 0.00000603925*x^2*y - 0.0389806*y^2 -
 ;;        0.0000403488*x*y^2 + 0.000168556*y^3
 
-;; convert a true heading to magnetic
 ;; Continental US only, 3771 points, RMS error 1 degree All within 2 degrees except for the following airports: MO49 MO86 MO50 3K6 02K and KOOA
 ;; (24 < lat < 50,  66 < lon < 125)
-(defun true2magnetic (point)
+(defun true-to-magnetic (point)
+  "Converts a true heading in degrees to a magnetic heading in
+degrees. Only valid for Continental US."
   (+
    (- 0.0 65.6811)
    (* 0.99 (point-lat point))
@@ -475,13 +381,12 @@ current course and speed 'step' seconds from now."
    (- 0.0 (* 0.0000403488 (point-lat point) (expt (- 0.0 (point-lon point)) 2)))
    (* 0.000168556 (expt (- 0.0 (point-lon point)) 3))))
 
-;; convert a magnetic heading to true
 ;; Continental US only, 3771 points, RMS error 1 degree All within 2 degrees except for the following airports: MO49 MO86 MO50 3K6 02K and KOOA
 ;; (24 < lat < 50,  66 < lon < 125)
-(defun magnetic2true (point)
+(defun magnetic-to-true (point)
+  "Converts a magnetic heading in degrees to a true heading in
+degrees. Only valid for Continental US."
   (- 0.0 (true2magnetic point)))
-
-;; TODO
 
 ;; Alaska Fit, better than 1 degree, all points:
 ;;   var=  618.854 + 2.76049*x - 0.556206*x^2 + 0.00251582*x^3 - 12.7974*y +
