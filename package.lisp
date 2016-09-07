@@ -6,6 +6,7 @@
   (:export :2d-point
 	   :3d-point
 	   :spot-point
+	   :gps-point
 	   :pp
 	   :point-lat
 	   :point-lon
