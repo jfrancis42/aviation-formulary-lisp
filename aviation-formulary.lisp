@@ -385,13 +385,14 @@ that type."
 
 (defmethod pp ((p gps-point))
   "Pretty print a GPS point."
+  (format t "Time:  ~A~%" (local-time:unix-to-timestamp (point-creation-time p)))
   (format t "Lat:  ~F~%" (point-lat p))
   (format t "Lon:  ~F~%" (point-lon p))
   (format t "Alt:  ~F~%" (point-alt p))
   (format t "Spd:  ~F~%" (point-spd p))
   (format t "Crs:  ~F~%" (point-crs p))
-  (format t "Sats:  ~F~%" (point-sats p))
-  (format t "Mode:  ~F~%" (point-mode p))
+  (format t "Sats:  ~A~%" (point-sats p))
+  (format t "Mode:  ~A~%" (point-mode p))
   (format t "Datum:  ~A~%" (point-datum p)))
 
 (defmethod point-deserialize-method ((p gps-point) point-data)
