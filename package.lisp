@@ -8,11 +8,13 @@
 	   :spot-point
 	   :gps-point
 	   :pp
-	   :point-lat
-	   :point-lon
 	   :message-type
 	   :battery-state
 	   :unix-time
+	   :point-lat
+	   :point-lon
+	   :point-sats
+	   :point-mode
 	   :point-user
 	   :point-generated
 	   :point-gps
