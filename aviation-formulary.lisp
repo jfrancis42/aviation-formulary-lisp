@@ -358,6 +358,9 @@ that type."
   ((spd :accessor point-spd
 	:initarg :spd
 	:initform nil)
+   (mode :accessor point-mode
+	 :initarg :mode
+	 :initform nil)
    (sats :accessor point-sats
 	 :initarg :sats
 	 :initform nil)
@@ -375,7 +378,9 @@ that type."
     (list 'datum (point-datum p))
     (list 'alt (point-alt p))
     (list 'spd (point-spd p))
-    (list 'crs (point-crs p)))
+    (list 'crs (point-crs p))
+    (list 'sats (point-sats p))
+    (list 'mode (point-mode p)))
    (user-info-serialize p)))
 
 (defmethod pp ((p gps-point))
@@ -385,6 +390,8 @@ that type."
   (format t "Alt:  ~F~%" (point-alt p))
   (format t "Spd:  ~F~%" (point-spd p))
   (format t "Crs:  ~F~%" (point-crs p))
+  (format t "Sats:  ~F~%" (point-sats p))
+  (format t "Mode:  ~F~%" (point-mode p))
   (format t "Datum:  ~A~%" (point-datum p)))
 
 (defmethod point-deserialize-method ((p gps-point) point-data)
@@ -404,6 +411,10 @@ that type."
 		(setf (point-crs p) (second n)))
 	       ((equal (first n) 'alt)
 		(setf (point-alt p) (second n)))
+	       ((equal (first n) 'sats)
+		(setf (point-sats p) (second n)))
+	       ((equal (first n) 'mode)
+		(setf (point-mode p) (second n)))
 	       ((equal (first n) 'datum)
 		(setf (point-datum p) (second n)))
 	       ))
