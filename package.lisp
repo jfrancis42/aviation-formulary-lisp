@@ -7,6 +7,7 @@
 	   :3d-point
 	   :spot-point
 	   :gps-point
+	   :geocode-point
 	   :pp
 	   :message-type
 	   :battery-state
@@ -19,6 +20,8 @@
 	   :point-generated
 	   :point-gps
 	   :point-spot
+	   :point-geocode
+	   :address
 	   :creation-source
 	   :rad-to-km
 	   :km-to-rad

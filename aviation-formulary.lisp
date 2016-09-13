@@ -34,6 +34,7 @@
 (defconstant point-generated 1)
 (defconstant point-gps 2)
 (defconstant point-spot 3)
+(defconstant point-geocode 4)
 
 ;; radians to km
 (defmacro rad-to-km (r) `(* ,r *earth-radius*))
@@ -309,6 +310,52 @@ that type."
 		(setf (battery-state p) (second n)))
 	       ((equal (first n) 'hidden)
 		(setf (hidden p) (second n)))
+	       ((equal (first n) 'datum)
+		(setf (point-datum p) (second n)))
+	       ))
+	  point-data))
+
+;;  Decendant of 2d-point.  Adds an address field for Google's
+;;  geocoding service.
+(defclass geocode-point (2d-point)
+  ((address :accessor address
+	    :initarg :address
+	    :initform nil)))
+
+(defmethod point-serialize ((p geocode-point))
+  "Serialize a GEOCODE point."
+  (append
+   (list
+    '(type geocode-point)
+    (list 'lat (point-lat p))
+    (list 'lon (point-lon p))
+    (list 'datum (point-datum p))
+    (list 'address (address p))
+    )
+   (point-metadata-serialize p)))
+
+(defmethod pp ((p geocode-point))
+  "Pretty print a geocode point."
+  (format t "Name:  ~A~%" (point-name p))
+  (format t "Descr:  ~A~%" (point-description p))
+  (format t "Lat:  ~F~%" (point-lat p))
+  (format t "Lon:  ~F~%" (point-lon p))
+  (format t "Address: ~A~%" (address p))
+  (format t "Datum:  ~A~%" (point-datum p)))
+
+(defmethod point-deserialize-method ((p geocode-point) point-data)
+  "Create an object from the data dumped by 'point-serialize'.  If the
+optional point-type value is supplied, the created object will be of
+that type."
+  (point-metadata-deserialize-method p point-data)
+  (mapcar #'(lambda (n)
+	      (cond
+	       ((equal (first n) 'lat)
+		(setf (point-lat p) (second n)))
+	       ((equal (first n) 'lon)
+		(setf (point-lon p) (second n)))
+	       ((equal (first n) 'address)
+		(setf (address p) (second n)))
 	       ((equal (first n) 'datum)
 		(setf (point-datum p) (second n)))
 	       ))
