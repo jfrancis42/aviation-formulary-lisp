@@ -194,6 +194,8 @@ that type."
 
 (defmethod pp ((p 2d-point))
   "Pretty print a 2d point."
+  (format t "Name:  ~A~%" (point-name p))
+  (format t "Descr:  ~A~%" (point-description p))
   (format t "Lat:  ~F~%" (point-lat p))
   (format t "Lon:  ~F~%" (point-lon p))
   (format t "Datum:  ~A~%" (point-datum p)))
@@ -266,6 +268,8 @@ that type."
 
 (defmethod pp ((p spot-point))
   "Pretty print a spot point."
+  (format t "Name:  ~A~%" (point-name p))
+  (format t "Descr:  ~A~%" (point-description p))
   (format t "Lat:  ~F~%" (point-lat p))
   (format t "Lon:  ~F~%" (point-lon p))
   (format t "Id:  ~F~%" (id p))
@@ -329,6 +333,8 @@ that type."
 
 (defmethod pp ((p 3d-point))
   "Pretty print a 3d point."
+  (format t "Name:  ~A~%" (point-name p))
+  (format t "Descr:  ~A~%" (point-description p))
   (format t "Lat:  ~F~%" (point-lat p))
   (format t "Lon:  ~F~%" (point-lon p))
   (format t "Alt:  ~F~%" (point-alt p))
@@ -385,6 +391,8 @@ that type."
 
 (defmethod pp ((p gps-point))
   "Pretty print a GPS point."
+  (format t "Name:  ~A~%" (point-name p))
+  (format t "Descr:  ~A~%" (point-description p))
   (format t "Time:  ~A~%" (local-time:unix-to-timestamp (point-creation-time p)))
   (format t "Lat:  ~F~%" (point-lat p))
   (format t "Lon:  ~F~%" (point-lon p))
