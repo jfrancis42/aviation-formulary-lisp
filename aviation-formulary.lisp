@@ -311,6 +311,8 @@ that type."
 
 (defmethod pp ((p geocode-point))
   "Pretty print a geocode point."
+  (format t "Time: ~A~%" (local-time:unix-to-timestamp (point-creation-time p)))
+  (format t "Age (sec): ~A~%" (- (local-time:timestamp-to-unix (local-time:now)) (point-creation-time p)))
   (format t "Name:  ~A~%" (point-name p))
   (format t "Descr:  ~A~%" (point-description p))
   (format t "Lat:  ~F~%" (point-lat p))
