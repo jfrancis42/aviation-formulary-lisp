@@ -12,8 +12,10 @@
 	   :message-type
 	   :battery-state
 	   :unix-time
+	   :point-creation-time
 	   :point-lat
 	   :point-lon
+	   :point-datum
 	   :point-sats
 	   :point-mode
 	   :point-user
@@ -36,6 +38,7 @@
 	   :calc-distance-shorter
 	   :calc-gc-bearing
 	   :calc-new-point
+	   :point-metadata-serialize
 	   :serialize-points-to-file
 	   :deserialize-points-from-file
 	   :true-to-magnetic
