@@ -30,9 +30,6 @@
 	   :deg-to-cardinal-course
 	   :url-photo
 	   :url-map
-	   :google-url-hybrid
-	   :google-url-photo
-	   :google-url-map
 	   :point-serialize
 	   :point-deserialize
 	   :calc-distance

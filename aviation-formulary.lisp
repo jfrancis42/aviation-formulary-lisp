@@ -158,31 +158,6 @@ that type."
 (defclass 2d-point (point point-metadata)
   ())
 
-(defmethod url-photo ((p 2d-point))
-  "Print an ACME url for this point."
-  (format nil "http://www.acme.com/mapper/?lat=~F&long=~F&scale=10&theme=Image&width=4&height=3&dot=Yes"
-	  (point-lat p) (point-lon p)))
-
-(defmethod url-map ((p 2d-point))
-  "Print a Mapquest url for this point."
-  (format nil "http://www.mapquest.com/maps/map.adp?latlongtype=decimal&latitude=~F&longitude=~F"
-	  (point-lat p) (point-lon p)))
-
-(defmethod google-url-hybrid ((p 2d-point))
-  "Print a google url for this point.."
-  (format nil "http://maps.google.com/maps?ll=~F,~F&spn=0.006362199783325195,0.009344816207885742&t=h&hl=en"
-	  (point-lat p) (point-lon p)))
-
-(defmethod google-url-photo ((p 2d-point))
-  "Print a google url for this point.."
-  (format nil "http://maps.google.com/maps?ll=~F,~F&spn=0.006362199783325195,0.009344816207885742&t=k&hl=en"
-	  (point-lat p) (point-lon p)))
-
-(defmethod google-url-map ((p 2d-point))
-  "Print a google url for this point.."
-  (format nil "http://maps.google.com/maps?spn=~F,~F&hl=en"
-	  (point-lat p) (point-lon p)))
-
 (defmethod point-serialize ((p 2d-point))
   "Serialize a 2d point."
   (append
