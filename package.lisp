@@ -5,26 +5,21 @@
   (:use #:cl)
   (:export :2d-point
 	   :3d-point
-	   :spot-point
-	   :gps-point
-	   :geocode-point
 	   :pp
-	   :message-type
-	   :battery-state
-	   :unix-time
+	   :point-serial-number
 	   :point-creation-time
+	   :point-creation-source
+	   :point-name
+	   :point-description
 	   :point-lat
 	   :point-lon
 	   :point-datum
-	   :point-sats
-	   :point-mode
+	   :point-alt
+	   :message-type
+	   :unix-time
 	   :point-user
 	   :point-generated
-	   :point-gps
-	   :point-spot
-	   :point-geocode
 	   :address
-	   :creation-source
 	   :rad-to-km
 	   :km-to-rad
 	   :deg-to-rad
