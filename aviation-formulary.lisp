@@ -155,6 +155,20 @@ that type."
 (defclass 2d-point (point point-metadata)
   ())
 
+(defmethod maidenhead ((p 2d-point))
+  "Derived from WA5ZNU's code at http://wa5znu.org/log/2004/04/qra-maidenhead-grid-in-emacs-lisp.html"
+  (let ((lat (point-lat p)) (lon (point-lon p)))
+    (setf lon (+ lon 180.0))
+    (setf lat (+ lat 90.0))
+    (format nil
+	    "~c~c~c~c~c~c"
+	    (code-char (+ 65 (floor lon 20.0)))
+	    (code-char (+ 65 (floor lat 10.0)))
+	    (code-char (+ 48 (floor (* 10 (- (/ lon 20.0) (floor lon 20.0))))))
+	    (code-char (+ 48 (floor (* 10 (- (/ lat 10.0) (floor lat 10.0))))))
+	    (code-char (+ 32 65 (floor (* 24 (- (/ lon 2.0) (floor lon 2.0))))))
+	    (code-char (+ 32 65 (floor (* 24 (- lat (floor lat)))))))))
+
 (defmethod point-serialize ((p 2d-point))
   "Serialize a 2d point."
   (append
