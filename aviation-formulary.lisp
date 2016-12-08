@@ -388,5 +388,5 @@ degrees. Only valid for Continental US."
 
 ;;     55 points (x > 54, 130 < y < 172)
 
-(defvar *lax* (make-instance '2d-point :lat 33.95 :lon -118.4))
-(defvar *jfk* (make-instance '2d-point :lat 40.6333333 :lon -73.78333336))
+;; (defvar *lax* (make-instance '2d-point :lat 33.95 :lon -118.4))
+;; (defvar *jfk* (make-instance '2d-point :lat 40.6333333 :lon -73.78333336))
