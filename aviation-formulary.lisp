@@ -5,7 +5,7 @@
 ;; Unit conversions, etc.
 ;;
 ;;  1 knot = 1.852000 km/hr*
-;;  1 knot = 185200/109728 ft/sec* =1.687810 ft/sec
+;;  1 knot = 185200/109728 ft/sec* = 1.687810 ft/sec
 ;;  1 knot = 1852000/1609344 mph* = 1.150779 mph
 ;;  1 mph  = 0.868976 knot
 ;;  1 mph  = 1.609344 km/hr*
@@ -58,26 +58,26 @@
   "Given a compass heading in degrees, return a string with the
 English cardinal name."
   (cond
-   ((and (>= course 337.5) (<= course 360.0))
-    (format nil "North"))
-   ((and (>= course 0) (< course 22.5))
-    (format nil "North"))
-   ((and (>= course 22.5) (< course 67.5))
-    (format nil "Northeast"))
-   ((and (>= course 67.5) (< course 112.5))
-    (format nil "East"))
-   ((and (>= course 112.5) (< course 157.5))
-    (format nil "Southeast"))
-   ((and (>= course 157.5) (< course 202.5))
-    (format nil "South"))
-   ((and (>= course 202.5) (< course 247.5))
-    (format nil "Southwest"))
-   ((and (>= course 247.5) (< course 292.5))
-    (format nil "West"))
-   ((and (>= course 292.5) (< course 337.5))
-    (format nil "Northwest"))
-   (t
-    (format nil "This can't happen"))))
+    ((and (>= course 337.5) (<= course 360.0))
+     (format nil "North"))
+    ((and (>= course 0) (< course 22.5))
+     (format nil "North"))
+    ((and (>= course 22.5) (< course 67.5))
+     (format nil "Northeast"))
+    ((and (>= course 67.5) (< course 112.5))
+     (format nil "East"))
+    ((and (>= course 112.5) (< course 157.5))
+     (format nil "Southeast"))
+    ((and (>= course 157.5) (< course 202.5))
+     (format nil "South"))
+    ((and (>= course 202.5) (< course 247.5))
+     (format nil "Southwest"))
+    ((and (>= course 247.5) (< course 292.5))
+     (format nil "West"))
+    ((and (>= course 292.5) (< course 337.5))
+     (format nil "Northwest"))
+    (t
+     (format nil "This can't happen"))))
 
 ;; Serial number for points.  Start at -1 so the first point is point
 ;; 0.
@@ -91,10 +91,13 @@ English cardinal name."
 (defclass point-metadata ()
   ((serial-number :accessor point-serial-number
 		  :initarg :serial-number
-		  :initform (bt:with-lock-held (*serial-lock*) (setf *point-serial-number* (+ 1 *point-serial-number*))))
+		  :initform (bt:with-lock-held (*serial-lock*)
+			      (setf *point-serial-number*
+				    (+ 1 *point-serial-number*))))
    (creation-time :accessor point-creation-time
-		    :initarg :creation-time
-		    :initform (local-time:timestamp-to-unix (local-time:now)))
+		  :initarg :creation-time
+		  :initform (local-time:timestamp-to-unix
+			     (local-time:now)))
    (creation-source :accessor point-creation-source
 		    :initarg :creation-source
 		    :initform point-user)
@@ -112,7 +115,8 @@ English cardinal name."
    (list 'creation-time (point-creation-time p))
    (list 'creation-source (point-creation-source p))
    (list 'name (format nil "\"~A\"" (point-name p)))
-   (list 'description (format nil "\"~A\"" (point-description p)))))
+   (list 'description (format nil "\"~A\""
+			      (point-description p)))))
 
 (defmethod point-metadata-deserialize-method ((p point-metadata) point-data)
   "Create an object from the data dumped by 'point-serialize'.  If the
@@ -120,17 +124,17 @@ optional point-type value is supplied, the created object will be of
 that type."
   (mapcar #'(lambda (n)
 	      (cond
-	       ((equal (first n) 'serial-number)
-		(setf (point-serial-number p) (second n)))
-	       ((equal (first n) 'creation-time)
-		(setf (point-creation-time p) (second n)))
-	       ((equal (first n) 'creation-source)
-		(setf (point-creation-source p) (second n)))
-	       ((equal (first n) 'name)
-		(setf (point-name p) (second n)))
-	       ((equal (first n) 'description)
-		(setf (point-description p) (second n)))
-	       ))
+		((equal (first n) 'serial-number)
+		 (setf (point-serial-number p) (second n)))
+		((equal (first n) 'creation-time)
+		 (setf (point-creation-time p) (second n)))
+		((equal (first n) 'creation-source)
+		 (setf (point-creation-source p) (second n)))
+		((equal (first n) 'name)
+		 (setf (point-name p) (second n)))
+		((equal (first n) 'description)
+		 (setf (point-description p) (second n)))
+		))
 	  point-data)
   )
 
@@ -156,7 +160,8 @@ that type."
   ())
 
 (defmethod maidenhead ((p 2d-point))
-  "Derived from WA5ZNU's code at http://wa5znu.org/log/2004/04/qra-maidenhead-grid-in-emacs-lisp.html"
+  "Derived from WA5ZNU's code at
+http://wa5znu.org/log/2004/04/qra-maidenhead-grid-in-emacs-lisp.html"
   (let ((lat (point-lat p)) (lon (point-lon p)))
     (setf lon (+ lon 180.0))
     (setf lat (+ lat 90.0))
@@ -164,10 +169,14 @@ that type."
 	    "~c~c~c~c~c~c"
 	    (code-char (+ 65 (floor lon 20.0)))
 	    (code-char (+ 65 (floor lat 10.0)))
-	    (code-char (+ 48 (floor (* 10 (- (/ lon 20.0) (floor lon 20.0))))))
-	    (code-char (+ 48 (floor (* 10 (- (/ lat 10.0) (floor lat 10.0))))))
-	    (code-char (+ 32 65 (floor (* 24 (- (/ lon 2.0) (floor lon 2.0))))))
-	    (code-char (+ 32 65 (floor (* 24 (- lat (floor lat)))))))))
+	    (code-char (+ 48 (floor
+			      (* 10 (- (/ lon 20.0) (floor lon 20.0))))))
+	    (code-char (+ 48 (floor
+			      (* 10 (- (/ lat 10.0) (floor lat 10.0))))))
+	    (code-char (+ 32 65 (floor
+				 (* 24 (- (/ lon 2.0) (floor lon 2.0))))))
+	    (code-char (+ 32 65 (floor
+				 (* 24 (- lat (floor lat)))))))))
 
 (defmethod point-serialize ((p 2d-point))
   "Serialize a 2d point."
@@ -194,13 +203,13 @@ that type."
   (point-metadata-deserialize-method p point-data)
   (mapcar #'(lambda (n)
 	      (cond
-	       ((equal (first n) 'lat)
-		(setf (point-lat p) (second n)))
-	       ((equal (first n) 'lon)
-		(setf (point-lon p) (second n)))
-	       ((equal (first n) 'datum)
-		(setf (point-datum p) (second n)))
-	       ))
+		((equal (first n) 'lat)
+		 (setf (point-lat p) (second n)))
+		((equal (first n) 'lon)
+		 (setf (point-lon p) (second n)))
+		((equal (first n) 'datum)
+		 (setf (point-datum p) (second n)))
+		))
 	  point-data))
 
 ;;  Decendant of 2d-point.  Adds altitude.
@@ -236,15 +245,15 @@ that type."
   (point-metadata-deserialize-method p point-data)
   (mapcar #'(lambda (n)
 	      (cond
-	       ((equal (first n) 'lat)
-		(setf (point-lat p) (second n)))
-	       ((equal (first n) 'lon)
-		(setf (point-lon p) (second n)))
-	       ((equal (first n) 'alt)
-		(setf (point-alt p) (second n)))
-	       ((equal (first n) 'datum)
-		(setf (point-datum p) (second n)))
-	       ))
+		((equal (first n) 'lat)
+		 (setf (point-lat p) (second n)))
+		((equal (first n) 'lon)
+		 (setf (point-lon p) (second n)))
+		((equal (first n) 'alt)
+		 (setf (point-alt p) (second n)))
+		((equal (first n) 'datum)
+		 (setf (point-datum p) (second n)))
+		))
 	  point-data))
 
 ;; -=-=-=-=-=-=- FUNCTIONS -=-=-=-=-=-=-
@@ -255,8 +264,9 @@ optional point-type value is supplied, the created object will be of
 that type."
   (let ((new-obj nil))
     (if (null point-type)
-	(setf new-obj (make-instance (second (assoc 'type point-data))))
-      (setf new-obj (make-instance point-type)))
+	(setf new-obj (make-instance
+		       (second (assoc 'type point-data))))
+	(setf new-obj (make-instance point-type)))
     (point-deserialize-method new-obj point-data)
     new-obj
     )
@@ -270,52 +280,56 @@ that type."
 	(equal (point-lon ,a)
 	       (point-lon ,b)))
        t
-     nil))
+       nil))
 
 (defun calc-distance (point-a point-b)
   "Given two points, return the distance between them in radians."
   (if
-      (equal point-a point-b)
-      0
-    (let
-	((lat1 (deg-to-rad (point-lat point-a)))
-	 (lon1 (deg-to-rad (- 0 (point-lon point-a))))
-	 (lat2 (deg-to-rad (point-lat point-b)))
-	 (lon2 (deg-to-rad (- 0 (point-lon point-b)))))
-      (acos
-       (+
-	(* (sin lat1) (sin lat2))
-	(* (cos lat1) (cos lat2) (cos (- lon1 lon2))))))))
+   (equal point-a point-b)
+   0
+   (let
+       ((lat1 (deg-to-rad (point-lat point-a)))
+	(lon1 (deg-to-rad (- 0 (point-lon point-a))))
+	(lat2 (deg-to-rad (point-lat point-b)))
+	(lon2 (deg-to-rad (- 0 (point-lon point-b)))))
+     (acos
+      (+
+       (* (sin lat1) (sin lat2))
+       (* (cos lat1) (cos lat2) (cos (- lon1 lon2))))))))
 
 (defun calc-distance-shorter (point-a point-b)
   "Given two points, return the distance between them in radians. More
 accurate than calc-distance."
   (if
-      (equal point-a point-b)
-      0
-    (let
-	((lat1 (deg-to-rad (point-lat point-a)))
-	 (lon1 (deg-to-rad (- 0 (point-lon point-a))))
-	 (lat2 (deg-to-rad (point-lat point-b)))
-	 (lon2 (deg-to-rad (- 0 (point-lon point-b)))))
-      (* 2 (asin (sqrt (+ (expt (sin (/ (- lat1 lat2) 2)) 2)
-			  (* (expt (sin (/ (- lon1 lon2) 2)) 2) (cos lat2) (cos lat1)))))))))
+   (equal point-a point-b)
+   0
+   (let
+       ((lat1 (deg-to-rad (point-lat point-a)))
+	(lon1 (deg-to-rad (- 0 (point-lon point-a))))
+	(lat2 (deg-to-rad (point-lat point-b)))
+	(lon2 (deg-to-rad (- 0 (point-lon point-b)))))
+     (* 2 (asin (sqrt (+ (expt (sin (/ (- lat1 lat2) 2)) 2)
+			 (* (expt (sin (/ (- lon1 lon2) 2)) 2)
+			    (cos lat2) (cos lat1)))))))))
 
 (defun calc-gc-bearing (point-a point-b)
   "Calculate the bearing in radians between point-a and point-b. Fails
 if either point is a pole."
   (if
-      (point-same-p point-a point-b)
-      0
-    (let
-	((lat1 (deg-to-rad (point-lat point-a)))
-	 (lon1 (deg-to-rad (- 0 (point-lon point-a))))
-	 (lat2 (deg-to-rad (point-lat point-b)))
-	 (lon2 (deg-to-rad (- 0 (point-lon point-b))))
-	 (d (calc-distance point-a point-b)))
-      (if (< (sin (- lon2 lon1)) 0)
-	  (acos (/ (- (sin lat2) (* (sin lat1) (cos d))) (* (sin d) (cos lat1))))
-	  (- (* 2 pi) (acos (/ (- (sin lat2) (* (sin lat1) (cos d))) (* (sin d) (cos lat1)))))))))
+   (point-same-p point-a point-b)
+   0
+   (let
+       ((lat1 (deg-to-rad (point-lat point-a)))
+	(lon1 (deg-to-rad (- 0 (point-lon point-a))))
+	(lat2 (deg-to-rad (point-lat point-b)))
+	(lon2 (deg-to-rad (- 0 (point-lon point-b))))
+	(d (calc-distance point-a point-b)))
+     (if (< (sin (- lon2 lon1)) 0)
+	 (acos (/ (- (sin lat2)
+		     (* (sin lat1) (cos d))) (* (sin d) (cos lat1))))
+	 (- (* 2 pi) (acos (/ (- (sin lat2)
+				 (* (sin lat1) (cos d)))
+			      (* (sin d) (cos lat1)))))))))
 
 (defun calc-new-point (point-a d az)
   "Given a point, return a new point that is d radians away from the
@@ -327,16 +341,22 @@ original point at azimuth az radians."
     (setf lat (asin (+ (* (sin lat1) (cos d)) (* (cos lat1) (sin d) (cos az)))))
     (setf dlon (atan (* (sin az) (sin d) (cos lat1)) (- (cos d) (* (sin lat1) (sin lat)))))
     (setf lon (- 0 (- (my-mod (+ (- lon1 dlon) pi) (* 2 pi)) pi)))
-    (make-instance '2d-point :creation-source point-generated :lat (rad-to-deg lat) :lon (rad-to-deg lon))))
+    (make-instance '2d-point
+		   :creation-source point-generated
+		   :lat (rad-to-deg lat)
+		   :lon (rad-to-deg lon))))
 
 (defun serialize-points-to-file (points filename)
   "Write a list of points to a file."
   (with-open-file
-   (file-handle filename :direction :output :if-does-not-exist :create :if-exists :supersede)
-		  (mapcar
-		   #'(lambda (n)
-		       (format file-handle "~A~%" (point-serialize n)))
-		   points)))
+      (file-handle filename
+		   :direction :output
+		   :if-does-not-exist :create
+		   :if-exists :supersede)
+    (mapcar
+     #'(lambda (n)
+	 (format file-handle "~A~%" (point-serialize n)))
+     points)))
 
 (defun deserialize-points-from-file (filename)
   "Read in a list of points from a file."
@@ -357,8 +377,10 @@ original point at azimuth az radians."
 ;;        0.0116268*x*y - 0.00000603925*x^2*y - 0.0389806*y^2 -
 ;;        0.0000403488*x*y^2 + 0.000168556*y^3
 
-;; Continental US only, 3771 points, RMS error 1 degree All within 2 degrees except for the following airports: MO49 MO86 MO50 3K6 02K and KOOA
-;; (24 < lat < 50,  66 < lon < 125)
+;; Continental US only, 3771 points, RMS error 1 degree All within 2
+;; degrees except for the following airports: MO49 MO86 MO50 3K6 02K
+;; and KOOA (24 < lat < 50, 66 < lon < 125)
+
 (defun true-to-magnetic (point)
   "Converts a true heading in degrees to a magnetic heading in
 degrees. Only valid for Continental US."
@@ -374,8 +396,10 @@ degrees. Only valid for Continental US."
    (- 0.0 (* 0.0000403488 (point-lat point) (expt (- 0.0 (point-lon point)) 2)))
    (* 0.000168556 (expt (- 0.0 (point-lon point)) 3))))
 
-;; Continental US only, 3771 points, RMS error 1 degree All within 2 degrees except for the following airports: MO49 MO86 MO50 3K6 02K and KOOA
-;; (24 < lat < 50,  66 < lon < 125)
+;; Continental US only, 3771 points, RMS error 1 degree All within 2
+;; degrees except for the following airports: MO49 MO86 MO50 3K6 02K
+;; and KOOA (24 < lat < 50, 66 < lon < 125)
+
 (defun magnetic-to-true (point)
   "Converts a magnetic heading in degrees to a true heading in
 degrees. Only valid for Continental US."
