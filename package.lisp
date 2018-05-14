@@ -22,6 +22,8 @@
 	   :point-generated
 	   :address
 	   :rad-to-km
+	   :rad-to-sm
+	   :rad-to-nm
 	   :km-to-rad
 	   :deg-to-rad
 	   :rad-to-deg

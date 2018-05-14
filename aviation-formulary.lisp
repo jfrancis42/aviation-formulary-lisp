@@ -36,6 +36,12 @@
 ;; radians to km
 (defmacro rad-to-km (r) `(* ,r *earth-radius*))
 
+;; radians to sm
+(defmacro rad-to-sm (r) `(* ,r *earth-radius* 0.621371))
+
+;; radians to nm
+(defmacro rad-to-nm (r) `(* ,r *earth-radius* 0.539957))
+
 ;; km to radians
 (defmacro km-to-rad (km) `(/ ,km *earth-radius*))
 
@@ -54,28 +60,46 @@
 ;; my own modulus
 (defun my-mod (y x) (- y (* x (floor (/ y x)))))
 
-(defun deg-to-cardinal-course (course)
+(defun deg-to-cardinal-course (course &optional (short nil))
   "Given a compass heading in degrees, return a string with the
 English cardinal name."
   (cond
     ((and (>= course 337.5) (<= course 360.0))
-     (format nil "North"))
+     (if short
+	 (format nil "N")
+	 (format nil "North")))
     ((and (>= course 0) (< course 22.5))
-     (format nil "North"))
+     (if short
+	 (format nil "N")
+	 (format nil "North")))
     ((and (>= course 22.5) (< course 67.5))
-     (format nil "Northeast"))
+     (if short
+	 (format nil "NE")
+	 (format nil "Northeast")))
     ((and (>= course 67.5) (< course 112.5))
-     (format nil "East"))
+     (if short
+	 (format nil "E")
+	 (format nil "East")))
     ((and (>= course 112.5) (< course 157.5))
-     (format nil "Southeast"))
+     (if short
+	 (format nil "SE")
+	 (format nil "Southeast")))
     ((and (>= course 157.5) (< course 202.5))
-     (format nil "South"))
+     (if short
+	 (format nil "S")
+	 (format nil "South")))
     ((and (>= course 202.5) (< course 247.5))
-     (format nil "Southwest"))
+     (if short
+	 (format nil "SW")
+	 (format nil "Southwest")))
     ((and (>= course 247.5) (< course 292.5))
-     (format nil "West"))
+     (if short
+	 (format nil "W")
+	 (format nil "West")))
     ((and (>= course 292.5) (< course 337.5))
-     (format nil "Northwest"))
+     (if short
+	 (format nil "NW")
+	 (format nil "Northwest")))
     (t
      (format nil "This can't happen"))))
 
