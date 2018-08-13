@@ -199,8 +199,8 @@ that type."
 		 -180)))
     (make-instance '2d-point
 		   :creation-source point-generated
-		   :lat lat
-		   :lon lon)))
+		   :lat (* 1.0 lat)
+		   :lon (* 1.0 lon))))
 
 (defmethod to-maidenhead ((p 2d-point))
   "Derived from WA5ZNU's code at
