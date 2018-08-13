@@ -183,7 +183,26 @@ that type."
 (defclass 2d-point (point point-metadata)
   ())
 
-(defmethod maidenhead ((p 2d-point))
+(defun from-maidenhead (grid)
+;; lat  =(CODE(MID(A1,2,1))-65)*10 + VALUE(MID(A1,4,1)) + (CODE(MID(A1,6,1))-97)/24 + 1/48 - 90
+;; lon  =(CODE(MID(A1,1,1))-65)*20 + VALUE(MID(A1,3,1))*2 + (CODE(MID(A1,5,1))-97)/12 + 1/24 - 180
+  (let* ((chars (coerce (if (= 4 (length grid)) (concatenate 'string grid "ll") grid) 'list))
+	 (lat (+ (* 10 (- (char-int (coerce (second chars) 'character)) 65))
+		 (parse-integer (string (fourth chars)))
+		 (/ (- (char-int (coerce (string-downcase (sixth chars)) 'character)) 97) 24)
+		 (/ 1 48)
+		 -90))
+	 (lon (+ (* 20 (- (char-int (coerce (first chars) 'character)) 65))
+		 (* 2 (parse-integer (string (third chars))))
+		 (/ (- (char-int (coerce (string-downcase (fifth chars)) 'character)) 97) 12)
+		 (/ 1 24)
+		 -180)))
+    (make-instance '2d-point
+		   :creation-source point-generated
+		   :lat lat
+		   :lon lon)))
+
+(defmethod to-maidenhead ((p 2d-point))
   "Derived from WA5ZNU's code at
 http://wa5znu.org/log/2004/04/qra-maidenhead-grid-in-emacs-lisp.html"
   (let ((lat (point-lat p)) (lon (point-lon p)))

@@ -6,7 +6,8 @@
   (:export :2d-point
 	   :3d-point
 	   :pp
-	   :maidenhead
+	   :to-maidenhead
+	   :from-maidenhead
 	   :point-serial-number
 	   :point-creation-time
 	   :point-creation-source
