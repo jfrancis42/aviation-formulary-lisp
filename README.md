@@ -1,6 +1,6 @@
 # aviation-formulary
 A Common Lisp library implementing the algorithms in the Aviation
-Formulary v1.46 found at: http://williams.best.vwh.net/avform.htm
+Formulary v1.46 found at: https://www.edwilliams.org/avform.htm
 
 The Aviation Formulary is a document written by Ed Williams that (in his own words), "Contains a fairly complete collection of great circle and rhumb line navigation formulae. It also contains standard atmosphere properties and E6B functions." This library is an implementation of the formulas in this document. This work has been done completely independently of Mr. Williams and (at least so far as I know), without his knowledge.
 
