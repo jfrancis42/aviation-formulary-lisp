@@ -355,7 +355,42 @@ accurate than calc-distance."
 			 (* (expt (sin (/ (- lon1 lon2) 2)) 2)
 			    (cos lat2) (cos lat1)))))))))
 
-(defun calc-gc-bearing (point-a point-b)
+(defun calc-gc-bearing (point-a point-b) ;; TODO: validate logic (specifcally nsew) before commit.
+  "Calculate the bearing in radians between point-a and point-b. Fails
+if either point is a pole."
+  (cond
+    ((point-same-p point-a point-b)
+     0)
+    ((and (= (point-lat point-a) (point-lat point-b))
+	  (> (point-lon point-a) (point-lon point-b)))
+     ;; west 
+     (* 1.5 pi))
+    ((and (= (point-lat point-a) (point-lat point-b))
+	  (< (point-lon point-a) (point-lon point-b)))
+     ;; east 
+     (* 0.5 pi))
+    ((and (= (point-lon point-a) (point-lon point-b))
+	  (> (point-lat point-a) (point-lat point-b)))
+     ;; north
+     0.0)
+    ((and (= (point-lon point-a) (point-lon point-b))
+	  (< (point-lat point-a) (point-lat point-b)))
+     ;; south
+     pi)
+    (t (let
+	   ((lat1 (deg-to-rad (point-lat point-a)))
+	    (lon1 (deg-to-rad (- 0 (point-lon point-a))))
+	    (lat2 (deg-to-rad (point-lat point-b)))
+	    (lon2 (deg-to-rad (- 0 (point-lon point-b))))
+	    (d (calc-distance point-a point-b)))
+	 (if (< (sin (- lon2 lon1)) 0)
+	     (acos (/ (- (sin lat2)
+			 (* (sin lat1) (cos d))) (* (sin d) (cos lat1))))
+	     (- (* 2 pi) (acos (/ (- (sin lat2)
+				     (* (sin lat1) (cos d)))
+				  (* (sin d) (cos lat1))))))))))
+
+(defun calc-gc-bearing-orig (point-a point-b)
   "Calculate the bearing in radians between point-a and point-b. Fails
 if either point is a pole."
   (if
@@ -388,6 +423,71 @@ original point at azimuth az radians."
 		   :creation-source point-generated
 		   :lat (rad-to-deg lat)
 		   :lon (rad-to-deg lon))))
+
+; (defun calc-intersecting-radials (point-a crs-a point-b crs-b)
+;   "Given two points and two courses, calculate the intersection
+; point."
+; ; # xxx
+; ; # 
+; ; # Now how to compute the latitude, latc, and longitude, lonc of an
+; ; # intersection formed by the crsac true bearing from point 1 and the
+; ; # crsbc true bearing from point 2:
+; ; #
+; ; # dstab=2*asin(sqrt((sin((lata-latb)/2))^2+
+; ; #                    cos(lata)*cos(latb)*sin((lona-lonb)/2)^2))
+;   (let* ((dstab (calc-distance-shorter (point-a point-b)))
+; ; # IF sin(lonb-lona)<0
+; ; #    crsab=acos((sin(latb)-sin(lata)*cos(dstab))/(sin(dstab)*cos(lata)))
+; ; #    crsba=2.*pi-acos((sin(lata)-sin(latb)*cos(dstab))/(sin(dstab)*cos(latb)))
+; ; # ELSE
+; ; #    crsab=2.*pi-acos((sin(latb)-sin(lata)*cos(dstab))/(sin(dstab)*cos(lata)))
+; ; #    crsba=acos((sin(lata)-sin(latb)*cos(dstab))/(sin(dstab)*cos(latb)))
+; ; # ENDIF
+; ; 	 (crsab (calc-gc-bearing point-a point-b))
+; ; 	 (crsba (calc-gc-bearing point-b point-a))
+; ; # ang1=mod(crsac-crsab+pi,2.*pi)-pi
+; ; # ang2=mod(crsba-crsbc+pi,2.*pi)-pi
+; ; 	 (ang1 (- (my-mod (+ pi (- crs-a crsab)) (* 2 pi)) pi))
+; ; 	 (ang2 (- (my-mod (+ pi (- crsba crs-b )) (* 2 pi)) pi))
+; ; 	 (ang3 nil)))
+; ; # IF (sin(ang1)=0 AND sin(ang2)=0)
+; ; #    "infinity of intersections"
+; ; # ELSEIF sin(ang1)*sin(ang2)<0
+; ; #    "intersection ambiguous"
+; 	 (when (or (and (= 0.0 (sin ang1))
+;  			(= 0.0 (sin ang2)))
+;  		   (< (* (sin ang1) (sin ang2)) 0))
+; 	   (return nil))
+; ; # ELSE
+; ; #    ang1=abs(ang1)
+; ; #    ang2=abs(ang2)
+; ; #    ang3=acos(-cos(ang1)*cos(ang2)+sin(ang1)*sin(ang2)*cos(dstab)) 
+; ; #    dstac=atan2(sin(dstab)*sin(ang1)*sin(ang2),cos(ang2)+cos(ang1)*cos(ang3))
+; ; #    latc=asin(sin(lata)*cos(dstac)+cos(lata)*sin(dstac)*cos(crsac))
+; ; #    dlon=atan2(sin(crsac)*sin(dstac)*cos(lata),cos(dstac)-sin(lata)*sin(latc))
+; ; #    lonc=mod(lona-dlon+pi,2*pi)-pi
+; ; # ENDIF
+; 	 (setf ang1 (abs ang1))
+; 	 (setf ang2 (abs ang2))
+; 	 (setf ang3 (acos (+ (* (- 0(cos ang1)) (cos ang2))
+; 			     (* (sin ang1) (sin ang2) (cos dstab)))))
+; 	 (setf dstac (atan (* (sin dstab) (sin ang1) (sin ang2))
+; 			   (+ (cos ang2) (* (cos ang1) (cos ang3)))))
+; 	 (setf latc (asin (+ (* (sin lata) (cos dstac))
+; 			     (* (cos lata) (sin dstac) (cos crsac)))))
+; 	 (setf dlon (atan (* (sin crsac) (sin dstac) (cos lata))
+; 			     (- (cos dstac) (* (sin lata) (sin latc)))))
+; 
+; 
+; 
+; ; #    lonc=mod(lona-dlon+pi,2*pi)-pi
+; 
+; 
+; ; #
+; ; # The points 1,2 and the (if unique) intersection 3 form a spherical
+; ; # triangle with interior angles abs(ang1), abs(ang2) and ang3. To find
+; ; # the pair of antipodal intersections of two great circles uses the
+; ; # following reference.
 
 (defun serialize-points-to-file (points filename)
   "Write a list of points to a file."
