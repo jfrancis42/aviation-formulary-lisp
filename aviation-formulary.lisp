@@ -16,11 +16,8 @@
 ;;
 ;; * = exact conversion factor
 
-;; serial number mutex 
+;; serial number mutex
 (defparameter *serial-lock* (bt:make-lock))
-
-;; radians per degree
-(defconstant radians-per-degree (/ pi 180))
 
 ;; Different Earth radius values.
 (defconstant earth-radius-nm-historic 6366.71)
@@ -328,7 +325,7 @@ that type."
 (defun calc-distance (point-a point-b)
   "Given two points, return the distance between them in radians."
   (if
-   (equal point-a point-b)
+   (point-same-p point-a point-b)
    0
    (let
        ((lat1 (deg-to-rad (point-lat point-a)))
@@ -344,7 +341,7 @@ that type."
   "Given two points, return the distance between them in radians. More
 accurate than calc-distance."
   (if
-   (equal point-a point-b)
+   (point-same-p point-a point-b)
    0
    (let
        ((lat1 (deg-to-rad (point-lat point-a)))
@@ -355,7 +352,7 @@ accurate than calc-distance."
 			 (* (expt (sin (/ (- lon1 lon2) 2)) 2)
 			    (cos lat2) (cos lat1)))))))))
 
-(defun calc-gc-bearing (point-a point-b) ;; TODO: validate logic (specifcally nsew) before commit.
+(defun calc-gc-bearing (point-a point-b)
   "Calculate the bearing in radians between point-a and point-b. Fails
 if either point is a pole."
   (cond
@@ -363,11 +360,11 @@ if either point is a pole."
      0)
     ((and (= (point-lat point-a) (point-lat point-b))
 	  (> (point-lon point-a) (point-lon point-b)))
-     ;; west 
+     ;; west
      (* 1.5 pi))
     ((and (= (point-lat point-a) (point-lat point-b))
 	  (< (point-lon point-a) (point-lon point-b)))
-     ;; east 
+     ;; east
      (* 0.5 pi))
     ((and (= (point-lon point-a) (point-lon point-b))
 	  (> (point-lat point-a) (point-lat point-b)))
@@ -390,25 +387,6 @@ if either point is a pole."
 				     (* (sin lat1) (cos d)))
 				  (* (sin d) (cos lat1))))))))))
 
-(defun calc-gc-bearing-orig (point-a point-b)
-  "Calculate the bearing in radians between point-a and point-b. Fails
-if either point is a pole."
-  (if
-   (point-same-p point-a point-b)
-   0
-   (let
-       ((lat1 (deg-to-rad (point-lat point-a)))
-	(lon1 (deg-to-rad (- 0 (point-lon point-a))))
-	(lat2 (deg-to-rad (point-lat point-b)))
-	(lon2 (deg-to-rad (- 0 (point-lon point-b))))
-	(d (calc-distance point-a point-b)))
-     (if (< (sin (- lon2 lon1)) 0)
-	 (acos (/ (- (sin lat2)
-		     (* (sin lat1) (cos d))) (* (sin d) (cos lat1))))
-	 (- (* 2 pi) (acos (/ (- (sin lat2)
-				 (* (sin lat1) (cos d)))
-			      (* (sin d) (cos lat1)))))))))
-
 (defun calc-new-point (point-a d az)
   "Given a point, return a new point that is d radians away from the
 original point at azimuth az radians."
@@ -424,70 +402,6 @@ original point at azimuth az radians."
 		   :lat (rad-to-deg lat)
 		   :lon (rad-to-deg lon))))
 
-; (defun calc-intersecting-radials (point-a crs-a point-b crs-b)
-;   "Given two points and two courses, calculate the intersection
-; point."
-; ; # xxx
-; ; # 
-; ; # Now how to compute the latitude, latc, and longitude, lonc of an
-; ; # intersection formed by the crsac true bearing from point 1 and the
-; ; # crsbc true bearing from point 2:
-; ; #
-; ; # dstab=2*asin(sqrt((sin((lata-latb)/2))^2+
-; ; #                    cos(lata)*cos(latb)*sin((lona-lonb)/2)^2))
-;   (let* ((dstab (calc-distance-shorter (point-a point-b)))
-; ; # IF sin(lonb-lona)<0
-; ; #    crsab=acos((sin(latb)-sin(lata)*cos(dstab))/(sin(dstab)*cos(lata)))
-; ; #    crsba=2.*pi-acos((sin(lata)-sin(latb)*cos(dstab))/(sin(dstab)*cos(latb)))
-; ; # ELSE
-; ; #    crsab=2.*pi-acos((sin(latb)-sin(lata)*cos(dstab))/(sin(dstab)*cos(lata)))
-; ; #    crsba=acos((sin(lata)-sin(latb)*cos(dstab))/(sin(dstab)*cos(latb)))
-; ; # ENDIF
-; ; 	 (crsab (calc-gc-bearing point-a point-b))
-; ; 	 (crsba (calc-gc-bearing point-b point-a))
-; ; # ang1=mod(crsac-crsab+pi,2.*pi)-pi
-; ; # ang2=mod(crsba-crsbc+pi,2.*pi)-pi
-; ; 	 (ang1 (- (my-mod (+ pi (- crs-a crsab)) (* 2 pi)) pi))
-; ; 	 (ang2 (- (my-mod (+ pi (- crsba crs-b )) (* 2 pi)) pi))
-; ; 	 (ang3 nil)))
-; ; # IF (sin(ang1)=0 AND sin(ang2)=0)
-; ; #    "infinity of intersections"
-; ; # ELSEIF sin(ang1)*sin(ang2)<0
-; ; #    "intersection ambiguous"
-; 	 (when (or (and (= 0.0 (sin ang1))
-;  			(= 0.0 (sin ang2)))
-;  		   (< (* (sin ang1) (sin ang2)) 0))
-; 	   (return nil))
-; ; # ELSE
-; ; #    ang1=abs(ang1)
-; ; #    ang2=abs(ang2)
-; ; #    ang3=acos(-cos(ang1)*cos(ang2)+sin(ang1)*sin(ang2)*cos(dstab)) 
-; ; #    dstac=atan2(sin(dstab)*sin(ang1)*sin(ang2),cos(ang2)+cos(ang1)*cos(ang3))
-; ; #    latc=asin(sin(lata)*cos(dstac)+cos(lata)*sin(dstac)*cos(crsac))
-; ; #    dlon=atan2(sin(crsac)*sin(dstac)*cos(lata),cos(dstac)-sin(lata)*sin(latc))
-; ; #    lonc=mod(lona-dlon+pi,2*pi)-pi
-; ; # ENDIF
-; 	 (setf ang1 (abs ang1))
-; 	 (setf ang2 (abs ang2))
-; 	 (setf ang3 (acos (+ (* (- 0(cos ang1)) (cos ang2))
-; 			     (* (sin ang1) (sin ang2) (cos dstab)))))
-; 	 (setf dstac (atan (* (sin dstab) (sin ang1) (sin ang2))
-; 			   (+ (cos ang2) (* (cos ang1) (cos ang3)))))
-; 	 (setf latc (asin (+ (* (sin lata) (cos dstac))
-; 			     (* (cos lata) (sin dstac) (cos crsac)))))
-; 	 (setf dlon (atan (* (sin crsac) (sin dstac) (cos lata))
-; 			     (- (cos dstac) (* (sin lata) (sin latc)))))
-; 
-; 
-; 
-; ; #    lonc=mod(lona-dlon+pi,2*pi)-pi
-; 
-; 
-; ; #
-; ; # The points 1,2 and the (if unique) intersection 3 form a spherical
-; ; # triangle with interior angles abs(ang1), abs(ang2) and ang3. To find
-; ; # the pair of antipodal intersections of two great circles uses the
-; ; # following reference.
 
 (defun serialize-points-to-file (points filename)
   "Write a list of points to a file."
@@ -546,7 +460,7 @@ degrees. Only valid for Continental US."
 (defun magnetic-to-true (point)
   "Converts a magnetic heading in degrees to a true heading in
 degrees. Only valid for Continental US."
-  (- 0.0 (true2magnetic point)))
+  (- 0.0 (true-to-magnetic point)))
 
 ;; Alaska Fit, better than 1 degree, all points:
 ;;   var=  618.854 + 2.76049*x - 0.556206*x^2 + 0.00251582*x^3 - 12.7974*y +
@@ -554,6 +468,3 @@ degrees. Only valid for Continental US."
 ;;         0.00144712*x*y^2 + 0.000222521*y^3
 
 ;;     55 points (x > 54, 130 < y < 172)
-
-;; (defvar *lax* (make-instance '2d-point :lat 33.95 :lon -118.4))
-;; (defvar *jfk* (make-instance '2d-point :lat 40.6333333 :lon -73.78333336))

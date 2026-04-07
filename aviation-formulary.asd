@@ -9,4 +9,3 @@
                #:bordeaux-threads)
   :components ((:file "package")
                (:file "aviation-formulary")))
-
